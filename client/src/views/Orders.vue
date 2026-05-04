@@ -5,6 +5,49 @@
       <p>{{ t('orders.description') }}</p>
     </div>
 
+    <!-- Submitted Restock Orders (frontend-only state) -->
+    <div v-if="submittedOrders.length > 0" class="card restock-orders-card">
+      <div class="card-header">
+        <h3 class="card-title">Submitted Restock Orders ({{ submittedOrders.length }})</h3>
+      </div>
+      <div class="table-container">
+        <table class="restock-submitted-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Submitted</th>
+              <th>Items</th>
+              <th>Total Cost</th>
+              <th>Lead Time</th>
+              <th>Est. Delivery</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in submittedOrders" :key="order.id">
+              <td><strong>{{ order.id }}</strong></td>
+              <td>{{ formatRestockDate(order.submittedAt) }}</td>
+              <td>
+                <details class="items-details">
+                  <summary class="items-summary">{{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }}</summary>
+                  <div class="items-dropdown">
+                    <div v-for="item in order.items" :key="item.sku" class="item-entry">
+                      <span class="item-name">{{ item.name }}</span>
+                      <span class="item-meta">Qty: {{ item.quantity.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </details>
+              </td>
+              <td><strong>{{ currencySymbol }}{{ order.totalCost.toLocaleString() }}</strong></td>
+              <td>{{ order.leadTimeDays }} days</td>
+              <td>{{ formatRestockDate(order.estimatedDelivery) }}</td>
+              <td><span class="badge warning">Processing</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else>
@@ -83,11 +126,13 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
+import { useRestockOrders } from '../composables/useRestockOrders'
 
 export default {
   name: 'Orders',
   setup() {
     const { t, currentCurrency, translateProductName, translateCustomerName } = useI18n()
+    const { submittedOrders } = useRestockOrders()
 
     const currencySymbol = computed(() => {
       return currentCurrency.value === 'JPY' ? '¥' : '$'
@@ -153,6 +198,14 @@ export default {
       })
     }
 
+    const formatRestockDate = (dateString) => {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+
     onMounted(loadOrders)
 
     return {
@@ -160,9 +213,11 @@ export default {
       loading,
       error,
       orders,
+      submittedOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
+      formatRestockDate,
       currencySymbol,
       translateProductName,
       translateCustomerName
@@ -275,5 +330,15 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+/* Restock submitted orders table */
+.restock-orders-card {
+  margin-bottom: 1.25rem;
+}
+
+.restock-submitted-table {
+  table-layout: auto;
+  width: 100%;
 }
 </style>
